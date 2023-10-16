@@ -1,21 +1,21 @@
 /*****************************************************************************
-* Copyright (C) 2011 Adrien Maglo and Clément Courbet
-*
-* This file is part of PPMC.
-*
-* PPMC is free software: you can redistribute it and/or modify
-* it under the terms of the GNU General Public License as published by
-* the Free Software Foundation, either version 3 of the License, or
-* (at your option) any later version.
-*
-* PPMC is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU General Public License for more details.
-*
-* You should have received a copy of the GNU General Public License
-* along with PPMC.  If not, see <http://www.gnu.org/licenses/>.
-*****************************************************************************/
+ * Copyright (C) 2011 Adrien Maglo and Clément Courbet
+ *
+ * This file is part of PPMC.
+ *
+ * PPMC is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * PPMC is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with PPMC.  If not, see <http://www.gnu.org/licenses/>.
+ *****************************************************************************/
 
 #include "mymesh.h"
 #include "configuration.h"
@@ -23,8 +23,8 @@
 
 #include <algorithm>
 
-
-MyMesh::MyMesh(char filename[], std::string filePathOutput,
+MyMesh::MyMesh(char filename[],
+               std::string filePathOutput,
                unsigned i_decompPercentage,
                const int i_mode,
                unsigned i_quantBits,
@@ -34,21 +34,16 @@ MyMesh::MyMesh(char filename[], std::string filePathOutput,
                bool b_useConnectivityPredictionFaces,
                bool b_useConnectivityPredictionEdges,
                bool b_allowConcaveFaces,
-               bool b_useTriangleMeshConnectivityPredictionFaces) :
-    CGAL::Polyhedron_3< CGAL::Simple_cartesian<float>, MyItems >(), i_mode(i_mode),
-    b_jobCompleted(false), operation(Idle),
-    i_curDecimationId(0), i_curQuantizationId(0), i_curOperationId(0),
-    i_levelNotConvexId(0), b_testConvexity(false), connectivitySize(0),
-    geometrySize(0), i_quantBits(i_quantBits), dataOffset(0),
-    filePathOutput(filePathOutput), i_decompPercentage(i_decompPercentage),
-    osDebug(&fbDebug),
-    b_useAdaptiveQuantization(b_useAdaptiveQuantization),
-    b_useLiftingScheme(b_useLiftingScheme),
-    b_useCurvaturePrediction(b_useCurvaturePrediction),
-    b_useConnectivityPredictionFaces(b_useConnectivityPredictionFaces),
-    b_useConnectivityPredictionEdges(b_useConnectivityPredictionEdges),
-    b_useTriangleMeshConnectivityPredictionFaces(b_useTriangleMeshConnectivityPredictionFaces)
-{
+               bool b_useTriangleMeshConnectivityPredictionFaces)
+    : CGAL::Polyhedron_3<CGAL::Simple_cartesian<float>, MyItems>(), i_mode(i_mode), b_jobCompleted(false),
+      operation(Idle), i_curDecimationId(0), i_curQuantizationId(0), i_curOperationId(0), i_levelNotConvexId(0),
+      b_testConvexity(false), connectivitySize(0), geometrySize(0), i_quantBits(i_quantBits), dataOffset(0),
+      filePathOutput(filePathOutput), i_decompPercentage(i_decompPercentage), osDebug(&fbDebug),
+      b_useAdaptiveQuantization(b_useAdaptiveQuantization), b_useLiftingScheme(b_useLiftingScheme),
+      b_useCurvaturePrediction(b_useCurvaturePrediction),
+      b_useConnectivityPredictionFaces(b_useConnectivityPredictionFaces),
+      b_useConnectivityPredictionEdges(b_useConnectivityPredictionEdges),
+      b_useTriangleMeshConnectivityPredictionFaces(b_useTriangleMeshConnectivityPredictionFaces) {
     // Create the compressed data buffer.
     p_data = new char[BUFFER_SIZE];
     // Fill the buffer with 0.
@@ -59,26 +54,23 @@ MyMesh::MyMesh(char filename[], std::string filePathOutput,
     rangeCoder.p_data = p_data;
     rangeCoder.p_dataOffset = &dataOffset;
 
-    if (i_mode == COMPRESSION_MODE_ID) // Compression mode.
+    if (i_mode == COMPRESSION_MODE_ID)  // Compression mode.
     {
         std::filebuf fb;
-        fb.open (filename, std::ios::in);
-        if(fb.is_open())
-        {
+        fb.open(filename, std::ios::in);
+        if (fb.is_open()) {
             std::istream is(&fb);
             is >> *this;
 
             fb.close();
 
-            if (keep_largest_connected_components(1) != 0)
-            {
+            if (keep_largest_connected_components(1) != 0) {
                 std::cout << "Can't compress the mesh." << std::endl;
                 std::cout << "The codec doesn't handle meshes with several connected components." << std::endl;
                 exit(EXIT_FAILURE);
             }
 
-            if (!is_closed())
-            {
+            if (!is_closed()) {
                 std::cout << "Can't compress the mesh." << std::endl;
                 std::cout << "The codec doesn't handle meshes with borders." << std::endl;
                 exit(EXIT_FAILURE);
@@ -98,8 +90,7 @@ MyMesh::MyMesh(char filename[], std::string filePathOutput,
             writeMeshOff("mesh_quant.off");
 #endif
 
-            printf("Bounding box min coordinates: %f %f %f.\n",
-                   bbMin.x(), bbMin.y(), bbMin.z());
+            printf("Bounding box min coordinates: %f %f %f.\n", bbMin.x(), bbMin.y(), bbMin.z());
             printf("Quantization step: %f\n", f_quantStep);
 
             // Set the vertices of the edge that is the departure of the coding and decoding conquests.
@@ -110,7 +101,7 @@ MyMesh::MyMesh(char filename[], std::string filePathOutput,
                 b_testConvexity = true;
         }
     }
-    else // Decompression mode.
+    else  // Decompression mode.
     {
         readCompressedFile(filename);
         readCompressedData();
@@ -122,8 +113,7 @@ MyMesh::MyMesh(char filename[], std::string filePathOutput,
         vh_departureConquest[0] = vertices_begin();
         vh_departureConquest[1] = ++vertices_begin();
 
-        if (i_levelNotConvexId - i_nbDecimations > 0)
-        {
+        if (i_levelNotConvexId - i_nbDecimations > 0) {
             // Decompress until the first convex LOD is reached.
             while (i_curDecimationId < i_levelNotConvexId)
                 batchOperation();
@@ -133,128 +123,98 @@ MyMesh::MyMesh(char filename[], std::string filePathOutput,
 
     i_nbVerticesInit = size_of_vertices();
     i_nbFacetsInit = size_of_facets();
-    printf("Number of vertices: %lu.\nNumber of faces: %lu.\n",
-           i_nbVerticesInit, i_nbFacetsInit);
+    printf("Number of vertices: %lu.\nNumber of faces: %lu.\n", i_nbVerticesInit, i_nbFacetsInit);
 
     fbDebug.open("debug.txt", std::ios::out | std::ios::trunc);
 }
 
-
-MyMesh::~MyMesh()
-{
+MyMesh::~MyMesh() {
     delete[] p_data;
     fbDebug.close();
 }
 
-
-
 /**
-  * Perform one step of the current operation.
-  */
-void MyMesh::stepOperation()
-{
+ * Perform one step of the current operation.
+ */
+void MyMesh::stepOperation() {
     if (b_jobCompleted)
         return;
-    switch (operation)
-    {
-    case Idle:
-        if (i_mode == COMPRESSION_MODE_ID)
-            startNextCompresssionOp();
-        else
-            startNextDecompresssionOp();
-        break;
-    case DecimationConquest:
-        decimationStep();
-        break;
-    case RemovedVertexCoding:
-        RemovedVertexCodingStep();
-        break;
-    case InsertedEdgeCoding:
-        InsertedEdgeCodingStep();
-        break;
-    case AdaptiveQuantization:
-        adaptiveQuantizationStep();
-        break;
-    case UndecimationConquest:
-        undecimationStep();
-        break;
-    case InsertedEdgeDecoding:
-        InsertedEdgeDecodingStep();
-        break;
-    case AdaptiveUnquantization:
-        adaptiveUnquantizationStep();
-        break;
-    default:
-        break;
+    switch (operation) {
+        case Idle:
+            if (i_mode == COMPRESSION_MODE_ID)
+                startNextCompresssionOp();
+            else
+                startNextDecompresssionOp();
+            break;
+        case DecimationConquest: decimationStep(); break;
+        case RemovedVertexCoding: RemovedVertexCodingStep(); break;
+        case InsertedEdgeCoding: InsertedEdgeCodingStep(); break;
+        case AdaptiveQuantization: adaptiveQuantizationStep(); break;
+        case UndecimationConquest: undecimationStep(); break;
+        case InsertedEdgeDecoding: InsertedEdgeDecodingStep(); break;
+        case AdaptiveUnquantization: adaptiveUnquantizationStep(); break;
+        default: break;
     }
 }
 
-
 /**
-  * Perform one batch of steps of the current operation.
-  */
-void MyMesh::batchOperation()
-{
+ * Perform one batch of steps of the current operation.
+ */
+void MyMesh::batchOperation() {
     if (b_jobCompleted)
         return;
-    switch (operation)
-    {
-    case Idle:
-        if (i_mode == COMPRESSION_MODE_ID)
-            startNextCompresssionOp();
-        else
-            startNextDecompresssionOp();
-        break;
-    case DecimationConquest:
-        while(operation == DecimationConquest)
-            decimationStep();
-        break;
-    case RemovedVertexCoding:
-        while(operation == RemovedVertexCoding)
-            RemovedVertexCodingStep();
-        break;
-    case InsertedEdgeCoding:
-        while(operation == InsertedEdgeCoding)
-            InsertedEdgeCodingStep();
-        break;
-    case AdaptiveQuantization:
-        while(operation == AdaptiveQuantization)
-            adaptiveQuantizationStep();
-        break;
-    case UndecimationConquest:
-        while(operation == UndecimationConquest)
-            undecimationStep();
-        break;
-    case InsertedEdgeDecoding:
-        while(operation == InsertedEdgeDecoding)
-            InsertedEdgeDecodingStep();
-        break;
-    case AdaptiveUnquantization:
-        while (operation == AdaptiveUnquantization)
-            adaptiveUnquantizationStep();
-        break;
-    default:
-        break;
+    switch (operation) {
+        case Idle:
+            if (i_mode == COMPRESSION_MODE_ID)
+                startNextCompresssionOp();
+            else
+                startNextDecompresssionOp();
+            break;
+        case DecimationConquest:
+            while (operation == DecimationConquest)
+                decimationStep();
+            break;
+        case RemovedVertexCoding:
+            while (operation == RemovedVertexCoding)
+                RemovedVertexCodingStep();
+            break;
+        case InsertedEdgeCoding:
+            while (operation == InsertedEdgeCoding)
+                InsertedEdgeCodingStep();
+            break;
+        case AdaptiveQuantization:
+            while (operation == AdaptiveQuantization)
+                adaptiveQuantizationStep();
+            break;
+        case UndecimationConquest:
+            while (operation == UndecimationConquest)
+                undecimationStep();
+            break;
+        case InsertedEdgeDecoding:
+            while (operation == InsertedEdgeDecoding)
+                InsertedEdgeDecodingStep();
+            break;
+        case AdaptiveUnquantization:
+            while (operation == AdaptiveUnquantization)
+                adaptiveUnquantizationStep();
+            break;
+        default: break;
     }
 }
 
-
 /**
-  * Finish completely the current operation.
-  */
-void MyMesh::completeOperation()
-{
+ * Finish completely the current operation.
+ */
+void MyMesh::completeOperation() {
     while (!b_jobCompleted)
         batchOperation();
 }
 
-
 // Compute the mesh vertex bounding box.
-void MyMesh::computeBoundingBox()
-{
+void MyMesh::computeBoundingBox() {
     printf("Compute the mesh bounding box.\n");
     std::list<Point> vList;
-    for(MyMesh::Vertex_iterator vit = vertices_begin(); vit!=vertices_end(); ++vit)
+    for (MyMesh::Vertex_iterator vit = vertices_begin(); vit != vertices_end(); ++vit)
         vList.push_back(vit->point());
     MyKernel::Iso_cuboid_3 bBox = CGAL::bounding_box(vList.begin(), vList.end());
 
@@ -265,34 +225,26 @@ void MyMesh::computeBoundingBox()
     f_bbVolume = bbVect.x() * bbVect.y() * bbVect.z();
 }
 
-
 // Get the bounding box diagonal length.
-float MyMesh::getBBoxDiagonal() const
-{
+float MyMesh::getBBoxDiagonal() const {
     return sqrt(Vector(bbMin, bbMax).squared_length());
 }
 
-
 /**
-  * Get the bounding box center point
-  */
-Vector MyMesh::getBBoxCenter() const
-{
-    return ((bbMax - CGAL::ORIGIN)
-            + (bbMin - CGAL::ORIGIN)) / 2;
+ * Get the bounding box center point
+ */
+Vector MyMesh::getBBoxCenter() const {
+    return ((bbMax - CGAL::ORIGIN) + (bbMin - CGAL::ORIGIN)) / 2;
 }
 
-
 /**
-  * Determine the quantization step.
-  */
-void MyMesh::determineQuantStep()
-{
+ * Determine the quantization step.
+ */
+void MyMesh::determineQuantStep() {
     printf("Determine the quantization step.\n");
 
     float f_maxRange = 0;
-    for (unsigned i = 0; i < 3; ++i)
-    {
+    for (unsigned i = 0; i < 3; ++i) {
         float range = bbMax[i] - bbMin[i];
         if (range > f_maxRange)
             f_maxRange = range;
@@ -306,21 +258,17 @@ void MyMesh::determineQuantStep()
         f_adaptQuantRescaling = 10 / f_maxRange;
 }
 
-
 // Compute and store the quantized positions of the mesh vertices.
-void MyMesh::quantizeVertexPositions()
-{
+void MyMesh::quantizeVertexPositions() {
     printf("Quantize the vertex positions.\n");
     unsigned i_maxCoord = 1 << i_quantBits;
 
     // Update the positions to fit the quantization.
-    for (MyMesh::Vertex_iterator vit = vertices_begin(); vit!=vertices_end(); ++vit)
-    {
+    for (MyMesh::Vertex_iterator vit = vertices_begin(); vit != vertices_end(); ++vit) {
         Point p = vit->point();
         PointInt quantPoint = getQuantizedPos(p);
 
-        if (!b_useLiftingScheme)
-        {
+        if (!b_useLiftingScheme) {
             // Make sure the last value is in the range.
             assert(quantPoint.x() <= i_maxCoord);
             assert(quantPoint.y() <= i_maxCoord);
@@ -337,25 +285,20 @@ void MyMesh::quantizeVertexPositions()
     }
 }
 
-
 /**
-  * Quantize a position
-  */
-PointInt MyMesh::getQuantizedPos(Point p) const
-{
+ * Quantize a position
+ */
+PointInt MyMesh::getQuantizedPos(Point p) const {
     return PointInt((p.x() - bbMin.x()) / (f_quantStep * (1 << i_curQuantizationId)),
                     (p.y() - bbMin.y()) / (f_quantStep * (1 << i_curQuantizationId)),
                     (p.z() - bbMin.z()) / (f_quantStep * (1 << i_curQuantizationId)));
 }
 
-
 /**
-  * Get a position from the quantized coordinates.
-  */
-Point MyMesh::getPos(PointInt p) const
-{
+ * Get a position from the quantized coordinates.
+ */
+Point MyMesh::getPos(PointInt p) const {
     return Point((p.x() + 0.5) * f_quantStep * (1 << i_curQuantizationId) + bbMin.x(),
                  (p.y() + 0.5) * f_quantStep * (1 << i_curQuantizationId) + bbMin.y(),
                  (p.z() + 0.5) * f_quantStep * (1 << i_curQuantizationId) + bbMin.z());
 }
-

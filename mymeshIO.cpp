@@ -1,34 +1,32 @@
 /*****************************************************************************
-* Copyright (C) 2011 Adrien Maglo
-*
-* This file is part of PPMC.
-*
-* PPMC is free software: you can redistribute it and/or modify
-* it under the terms of the GNU General Public License as published by
-* the Free Software Foundation, either version 3 of the License, or
-* (at your option) any later version.
-*
-* PPMC is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU General Public License for more details.
-*
-* You should have received a copy of the GNU General Public License
-* along with PPMC.  If not, see <http://www.gnu.org/licenses/>.
-*****************************************************************************/
+ * Copyright (C) 2011 Adrien Maglo
+ *
+ * This file is part of PPMC.
+ *
+ * PPMC is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * PPMC is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with PPMC.  If not, see <http://www.gnu.org/licenses/>.
+ *****************************************************************************/
 
 #include <fstream>
 
+#include "configuration.h"
 #include "mymesh.h"
 #include "mymeshBaseBuilder.h"
-#include "configuration.h"
-
 
 /**
-  * Write the compressed data to the buffer.
-  */
-void MyMesh::writeCompressedData()
-{
+ * Write the compressed data to the buffer.
+ */
+void MyMesh::writeCompressedData() {
     i_nbDecimations = i_curDecimationId + 1;
     i_nbQuantizations = i_curQuantizationId;
 
@@ -38,90 +36,79 @@ void MyMesh::writeCompressedData()
 
     // Write the number of bytes needed to decode the base mesh.
     osDebug << connectivitySize + geometrySize
-            /*<< "," << connectivitySize << "," << geometrySize*/ << std::endl;
+            /*<< "," << connectivitySize << "," << geometrySize*/
+            << std::endl;
 
     printf("Writing the compressed data.\n");
 
     unsigned i_deci = i_curDecimationId;
     unsigned i_quant = i_curQuantizationId - 1;
-    while (!typeOfOperation.empty())
-    {
+    while (!typeOfOperation.empty()) {
         unsigned i_curOperationType = typeOfOperation.back();
         typeOfOperation.pop_back();
 
-        switch (i_curOperationType)
-        {
-        case DECIMATION_OPERATION_ID:
-            encodeRemovedVertices(i_deci);
-            encodeInsertedEdges(i_deci);
-            i_deci--;
-            break;
-        case QUANTIZATION_OPERATION_ID:
-            encodeAdaptiveQuantization(adaptiveQuantSym[i_quant]);
-            i_quant--;
-            break;
-        default:
-            assert(0);
-            break;
+        switch (i_curOperationType) {
+            case DECIMATION_OPERATION_ID:
+                encodeRemovedVertices(i_deci);
+                encodeInsertedEdges(i_deci);
+                i_deci--;
+                break;
+            case QUANTIZATION_OPERATION_ID:
+                encodeAdaptiveQuantization(adaptiveQuantSym[i_quant]);
+                i_quant--;
+                break;
+            default: assert(0); break;
         }
         // Write the number of bytes needed to decode the current LOD.
         osDebug << connectivitySize + geometrySize /*<< ","
-                << connectivitySize << "," << geometrySize*/ << std::endl;
+                << connectivitySize << "," << geometrySize*/
+                << std::endl;
     }
 
-    printf("Connectivity size: %lu bytes -> %.2f bits per vertex.\n",
-           (size_t)ceil(connectivitySize / 8.0), connectivitySize / (float)i_nbVerticesInit);
-    printf("Geometry size: %lu bytes -> %.2f bits per vertex.\n",
-           (size_t)ceil(geometrySize / 8.0), geometrySize / (float)i_nbVerticesInit);
+    printf("Connectivity size: %lu bytes -> %.2f bits per vertex.\n", (size_t)ceil(connectivitySize / 8.0),
+           connectivitySize / (float)i_nbVerticesInit);
+    printf("Geometry size: %lu bytes -> %.2f bits per vertex.\n", (size_t)ceil(geometrySize / 8.0),
+           geometrySize / (float)i_nbVerticesInit);
 
     size_t totalSize = connectivitySize + geometrySize;
-    printf("Total size: %lu bytes -> %.2f bits per vertex.\n",
-           (size_t)ceil(totalSize / 8.0), totalSize / (float)i_nbVerticesInit);
+    printf("Total size: %lu bytes -> %.2f bits per vertex.\n", (size_t)ceil(totalSize / 8.0),
+           totalSize / (float)i_nbVerticesInit);
 
     printf("Id of the first not convex decimation: %d.\n", i_levelNotConvexId);
 }
 
-
 /**
-  * Read the compressed data from the buffer.
-  * \return the bounding box min position.
-  */
-void MyMesh::readCompressedData()
-{
+ * Read the compressed data from the buffer.
+ * \return the bounding box min position.
+ */
+void MyMesh::readCompressedData() {
     // Read the base mesh.
     readBaseMesh();
 
-    printf("Bounding box min coordinates: %f %f %f.\n",
-           bbMin.x(), bbMin.y(), bbMin.z());
+    printf("Bounding box min coordinates: %f %f %f.\n", bbMin.x(), bbMin.y(), bbMin.z());
     printf("Quantization step: %f\n", f_quantStep);
 }
 
-
 // Write a given number of bits in a buffer.
-void writeBits(uint32_t data, unsigned i_nbBits, char *p_dest,
-               unsigned &i_bitOffset, size_t &offset)
-{
+void writeBits(uint32_t data, unsigned i_nbBits, char* p_dest, unsigned& i_bitOffset, size_t& offset) {
     assert(i_nbBits <= 25);
 
     uint32_t dataToAdd = data << (32 - i_nbBits - i_bitOffset);
     // Swap the integer bytes because the x86 architecture is little endian.
-    dataToAdd = __builtin_bswap32(dataToAdd); // Call a GCC builtin function.
+    dataToAdd = __builtin_bswap32(dataToAdd);  // Call a GCC builtin function.
 
     // Write the data.
-    *(uint32_t *)p_dest |= dataToAdd;
+    *(uint32_t*)p_dest |= dataToAdd;
 
     // Update the size and offset.
     offset += (i_bitOffset + i_nbBits) / 8;
     i_bitOffset = (i_bitOffset + i_nbBits) % 8;
 }
 
-
 /**
-  * Read a given number of bits in a buffer.
-  */
-uint32_t readBits(unsigned i_nbBits, char *p_src,
-                  unsigned &i_bitOffset, size_t &offset)
-{
+ * Read a given number of bits in a buffer.
+ */
+uint32_t readBits(unsigned i_nbBits, char* p_src, unsigned& i_bitOffset, size_t& offset) {
     assert(i_nbBits <= 25);
 
     // Build the mask.
@@ -129,12 +116,12 @@ uint32_t readBits(unsigned i_nbBits, char *p_src,
     for (unsigned i = 0; i < 32 - i_bitOffset; ++i)
         mask |= 1 << i;
     // Swap the mask bytes because the x86 architecture is little endian.
-    mask = __builtin_bswap32(mask); // Call a GCC builtin function.
+    mask = __builtin_bswap32(mask);  // Call a GCC builtin function.
 
-    uint32_t data = *(uint32_t *)p_src & mask;
+    uint32_t data = *(uint32_t*)p_src & mask;
 
     // Swap the integer bytes because the x86 architecture is little endian.
-    data = __builtin_bswap32(data); // Call a GCC builtin function.
+    data = __builtin_bswap32(data);  // Call a GCC builtin function.
 
     data >>= 32 - i_nbBits - i_bitOffset;
 
@@ -145,48 +132,38 @@ uint32_t readBits(unsigned i_nbBits, char *p_src,
     return data;
 }
 
-
 // Write a floating point number in the data buffer.
-void MyMesh::writeFloat(float f)
-{
-    *(float *)(p_data + dataOffset) = f;
+void MyMesh::writeFloat(float f) {
+    *(float*)(p_data + dataOffset) = f;
     dataOffset += sizeof(float);
 }
 
-
 /**
-  * Read a floating point number in the data buffer.
-  */
-float MyMesh::readFloat()
-{
-    float f = *(float *)(p_data + dataOffset);
+ * Read a floating point number in the data buffer.
+ */
+float MyMesh::readFloat() {
+    float f = *(float*)(p_data + dataOffset);
     dataOffset += sizeof(float);
     return f;
 }
 
-
 // Write a 16 bits integer in the data buffer
-void MyMesh::writeInt16(int16_t i)
-{
-    *(int16_t *)(p_data + dataOffset) = i;
+void MyMesh::writeInt16(int16_t i) {
+    *(int16_t*)(p_data + dataOffset) = i;
     dataOffset += sizeof(int16_t);
 }
 
-
 /**
-  * Read a 16 bits integer in the data buffer.
-  */
-int16_t MyMesh::readInt16()
-{
-    int16_t i = *(int16_t *)(p_data + dataOffset);
+ * Read a 16 bits integer in the data buffer.
+ */
+int16_t MyMesh::readInt16() {
+    int16_t i = *(int16_t*)(p_data + dataOffset);
     dataOffset += sizeof(int16_t);
     return i;
 }
 
-
 // Write the base mesh.
-void MyMesh::writeBaseMesh()
-{
+void MyMesh::writeBaseMesh() {
     printf("Writing the base mesh.\n");
 
     // Write the bounding box min coordinate.
@@ -243,33 +220,29 @@ void MyMesh::writeBaseMesh()
     unsigned i_nbAdditionalBitsGeometry = b_useLiftingScheme ? LIFTING_NB_ADDITIONAL_BITS_GEOMETRY : 0;
 
     // Write the vertices of the edge that is the departure of the coding conquests.
-    for (unsigned j = 0; j < 2; ++j)
-    {
+    for (unsigned j = 0; j < 2; ++j) {
         PointInt p = getQuantizedPos(vh_departureConquest[j]->point());
-        for (unsigned i = 0; i < 3; ++i)
-        {
+        for (unsigned i = 0; i < 3; ++i) {
             assert(p[i] < 1 << i_quantBits - i_curQuantizationId + i_nbAdditionalBitsGeometry);
-            writeBits(p[i], i_quantBits - i_curQuantizationId + i_nbAdditionalBitsGeometry,
-                      p_data + dataOffset - 1, i_bitOffset, dataOffset);
+            writeBits(p[i], i_quantBits - i_curQuantizationId + i_nbAdditionalBitsGeometry, p_data + dataOffset - 1,
+                      i_bitOffset, dataOffset);
         }
         vh_departureConquest[j]->setId(j);
     }
 
     // Write the other vertices.
     size_t id = 2;
-    for (MyMesh::Vertex_iterator vit = vertices_begin();
-         vit != vertices_end(); ++vit)
-    {
+    for (MyMesh::Vertex_iterator vit = vertices_begin(); vit != vertices_end(); ++vit) {
         if (vit == vh_departureConquest[0] || vit == vh_departureConquest[1])
             continue;
 
         PointInt p = getQuantizedPos(vit->point());
 
         // Write the coordinates.
-        for (unsigned i = 0; i < 3; ++i)
-        {
+        for (unsigned i = 0; i < 3; ++i) {
             assert(p[i] < 1 << i_quantBits - i_curQuantizationId + i_nbAdditionalBitsGeometry);
-            writeBits(p[i], i_quantBits - i_curQuantizationId + i_nbAdditionalBitsGeometry, p_data + dataOffset - 1, i_bitOffset, dataOffset);
+            writeBits(p[i], i_quantBits - i_curQuantizationId + i_nbAdditionalBitsGeometry, p_data + dataOffset - 1,
+                      i_bitOffset, dataOffset);
         }
         // Set an id to the vertex.
         vit->setId(id++);
@@ -277,33 +250,27 @@ void MyMesh::writeBaseMesh()
     geometrySize += i_nbVerticesBaseMesh * 3 * (i_quantBits - i_curQuantizationId);
 
     // Write the base mesh face vertex indices.
-    for (MyMesh::Facet_iterator fit = facets_begin();
-         fit != facets_end(); ++fit)
-    {
+    for (MyMesh::Facet_iterator fit = facets_begin(); fit != facets_end(); ++fit) {
         unsigned i_faceDegree = fit->facet_degree();
         unsigned i_code = i_faceDegree - 3;
         assert(i_code < 1 << NB_BITS_FACE_DEGREE_BASE_MESH);
         writeBits(i_code, NB_BITS_FACE_DEGREE_BASE_MESH, p_data + dataOffset - 1, i_bitOffset, dataOffset);
 
         Halfedge_around_facet_const_circulator hit(fit->facet_begin()), end(hit);
-        do
-        {
+        do {
             // Write the current vertex id.
             writeBits(hit->vertex()->getId(), i_nbBitsPerVertex, p_data + dataOffset - 1, i_bitOffset, dataOffset);
-        }
-        while(++hit != end);
+        } while (++hit != end);
 
         connectivitySize += i_nbBitsPerVertex * i_faceDegree + NB_BITS_FACE_DEGREE_BASE_MESH;
     }
 
-    if(i_bitOffset == 0)
+    if (i_bitOffset == 0)
         dataOffset--;
 }
 
-
 // Read the base mesh.
-void MyMesh::readBaseMesh()
-{
+void MyMesh::readBaseMesh() {
     printf("Reading the base mesh.\n");
 
     // Read the bounding box min coordinate.
@@ -340,34 +307,30 @@ void MyMesh::readBaseMesh()
 
     // Set the mesh bounding box.
     unsigned i_nbQuantStep = 1 << i_quantBits;
-    bbMax = bbMin + Vector(i_nbQuantStep * f_quantStep,
-                           i_nbQuantStep * f_quantStep,
-                           i_nbQuantStep * f_quantStep);
+    bbMax = bbMin + Vector(i_nbQuantStep * f_quantStep, i_nbQuantStep * f_quantStep, i_nbQuantStep * f_quantStep);
 
     unsigned i_nbVerticesBaseMesh = readBits(16, p_data + dataOffset - 1, i_bitOffset, dataOffset);
     unsigned i_nbFacesBaseMesh = readBits(16, p_data + dataOffset - 1, i_bitOffset, dataOffset);
     unsigned i_nbBitsPerVertex = ceil(log(i_nbVerticesBaseMesh) / log(2));
 
-    std::deque<Point> *p_pointDeque = new std::deque<Point>();
-    std::deque<uint32_t *> *p_faceDeque = new std::deque<uint32_t *>();
+    std::deque<Point>* p_pointDeque = new std::deque<Point>();
+    std::deque<uint32_t*>* p_faceDeque = new std::deque<uint32_t*>();
     unsigned i_nbAdditionalBitsGeometry = b_useLiftingScheme ? LIFTING_NB_ADDITIONAL_BITS_GEOMETRY : 0;
 
     // Read the vertex positions.
-    for (unsigned i = 0; i < i_nbVerticesBaseMesh; ++i)
-    {
+    for (unsigned i = 0; i < i_nbVerticesBaseMesh; ++i) {
         uint32_t p[3];
         for (unsigned j = 0; j < 3; ++j)
-            p[j] = readBits(i_quantBits - i_curQuantizationId + i_nbAdditionalBitsGeometry,
-                            p_data + dataOffset - 1, i_bitOffset, dataOffset);
+            p[j] = readBits(i_quantBits - i_curQuantizationId + i_nbAdditionalBitsGeometry, p_data + dataOffset - 1,
+                            i_bitOffset, dataOffset);
         PointInt posInt(p[0], p[1], p[2]);
         Point pos = getPos(posInt);
         p_pointDeque->push_back(pos);
     }
 
     // Read the face vertex indices.
-    for (unsigned i = 0; i < i_nbFacesBaseMesh; ++i)
-    {
-        uint32_t *f = new uint32_t[(1 << NB_BITS_FACE_DEGREE_BASE_MESH) + 3];
+    for (unsigned i = 0; i < i_nbFacesBaseMesh; ++i) {
+        uint32_t* f = new uint32_t[(1 << NB_BITS_FACE_DEGREE_BASE_MESH) + 3];
 
         // Write in the first cell of the array the face degree.
         f[0] = readBits(NB_BITS_FACE_DEGREE_BASE_MESH, p_data + dataOffset - 1, i_bitOffset, dataOffset) + 3;
@@ -388,14 +351,12 @@ void MyMesh::readBaseMesh()
     delete p_faceDeque;
     delete p_pointDeque;
 
-    if(i_bitOffset == 0)
+    if (i_bitOffset == 0)
         dataOffset--;
 }
 
-
 // Write the compressed data from the buffer to a file.
-int MyMesh::writeCompressedFile() const
-{
+int MyMesh::writeCompressedFile() const {
     int i_ret = 1;
 
     std::cout << "Write the compressed file " << filePathOutput << "." << std::endl;
@@ -403,8 +364,7 @@ int MyMesh::writeCompressedFile() const
     std::filebuf fb;
     fb.open(filePathOutput.c_str(), std::ios::out | std::ios::trunc);
 
-    if (fb.is_open())
-    {
+    if (fb.is_open()) {
         if (fb.sputn(p_data, dataOffset) == (std::streamsize)dataOffset)
             i_ret = 0;
         fb.close();
@@ -413,10 +373,8 @@ int MyMesh::writeCompressedFile() const
     return i_ret;
 }
 
-
 // Read the compressed data from the file and store them in a buffer.
-int MyMesh::readCompressedFile(char psz_filePath[])
-{
+int MyMesh::readCompressedFile(char psz_filePath[]) {
     int i_ret = 1;
 
     printf("Read the compressed file '%s'.\n", psz_filePath);
@@ -424,8 +382,7 @@ int MyMesh::readCompressedFile(char psz_filePath[])
     std::filebuf fb;
     fb.open(psz_filePath, std::ios::in);
 
-    if (fb.is_open())
-    {
+    if (fb.is_open()) {
         std::streamsize dataSize = fb.in_avail();
         if (fb.sgetn(p_data, dataSize) == (std::streamsize)dataSize)
             i_ret = 0;
@@ -435,22 +392,17 @@ int MyMesh::readCompressedFile(char psz_filePath[])
     return i_ret;
 }
 
-
 // Write the mesh in an off file.
-void MyMesh::writeMeshOff(const char psz_filePath[]) const
-{
+void MyMesh::writeMeshOff(const char psz_filePath[]) const {
     std::filebuf fb;
     fb.open(psz_filePath, std::ios::out | std::ios::trunc);
-    if(fb.is_open())
-    {
+    if (fb.is_open()) {
         std::ostream os(&fb);
         os << *this;
     }
 }
 
-
-void MyMesh::writeCurrentOperationMesh(std::string pathPrefix, unsigned i_id) const
-{
+void MyMesh::writeCurrentOperationMesh(std::string pathPrefix, unsigned i_id) const {
     // Output the current mesh in an off file.
     std::ostringstream fileName;
     fileName << pathPrefix << "_" << i_id << ".off";
